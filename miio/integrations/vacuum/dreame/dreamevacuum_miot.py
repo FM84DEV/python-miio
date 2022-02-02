@@ -15,9 +15,10 @@ from miio.utils import deprecated
 _LOGGER = logging.getLogger(__name__)
 
 
-DREAME_1C = "dreame.vacuum.mc1808"
-DREAME_F9 = "dreame.vacuum.p2008"
-DREAME_D9 = "dreame.vacuum.p2009"
+DREAME_1C  = "dreame.vacuum.mc1808"
+DREAME_F9  = "dreame.vacuum.p2008"
+DREAME_D9  = "dreame.vacuum.p2009"
+DREAME_Z10 = "dreame.vacuum.p2028"
 
 
 _DREAME_1C_MAPPING: MiotMapping = {
@@ -109,10 +110,52 @@ _DREAME_F9_MAPPING: MiotMapping = {
     "play_sound": {"siid": 7, "aiid": 2},
 }
 
+
+_DREAME_Z10_MAPPING: MiotMapping = {
+    # https://home.miot-spec.com/spec/dreame.vacuum.p2028
+    "battery_level": {"siid": 3, "piid": 1},
+    "charging_state": {"siid": 3, "piid": 2},
+    "device_fault": {"siid": 2, "piid": 2},
+    "device_status": {"siid": 2, "piid": 1},
+    "brush_left_time": {"siid": 9, "piid": 1},
+    "brush_life_level": {"siid": 9, "piid": 2},
+    "filter_life_level": {"siid": 11, "piid": 1},
+    "filter_left_time": {"siid": 11, "piid": 2},
+    "brush_left_time2": {"siid": 10, "piid": 1},
+    "brush_life_level2": {"siid": 10, "piid": 2},    
+    "operating_mode": {"siid": 4, "piid": 1},
+    "cleaning_mode": {"siid": 4, "piid": 4}, 
+    "timer_enable": {"siid": 5, "piid": 1},    
+    "cleaning_time": {"siid": 4, "piid": 2},
+    "cleaning_area": {"siid": 4, "piid": 3},
+    "first_clean_time": {"siid": 12, "piid": 1},
+    "total_clean_time": {"siid": 12, "piid": 2},
+    "total_clean_times": {"siid": 12, "piid": 3},
+    "total_clean_area": {"siid": 12, "piid": 4},    
+    "start_time": {"siid": 5, "piid": 2},
+    "stop_time": {"siid": 5, "piid": 3},  
+    "map_view": {"siid": 6, "piid": 1}, 
+    "frame_info": {"siid": 6, "piid": 2},
+    "volume": {"siid": 7, "piid": 1},
+    "voice_package": {"siid": 7, "piid": 2},        
+    "water_box_carriage_status": {"siid": 4, "piid": 6},
+    "timezone": {"siid": 8, "piid": 1},
+    "home": {"siid": 3, "aiid": 1},
+    "locate": {"siid": 7, "aiid": 1},
+    "start_clean": {"siid": 4, "aiid": 1},
+    "stop_clean": {"siid": 4, "aiid": 2},
+    "delete_timer": {"siid": 8, "aiid": 1},      
+    "reset_mainbrush_life": {"siid": 9, "aiid": 1},
+    "reset_filter_life": {"siid": 11, "aiid": 1},
+    "reset_sidebrush_life": {"siid": 10, "aiid": 1},
+    "play_sound": {"siid": 7, "aiid": 2},
+}
+
 MIOT_MAPPING: Dict[str, MiotMapping] = {
-    DREAME_1C: _DREAME_1C_MAPPING,
-    DREAME_F9: _DREAME_F9_MAPPING,
-    DREAME_D9: _DREAME_F9_MAPPING,
+    DREAME_1C:  _DREAME_1C_MAPPING,
+    DREAME_F9:  _DREAME_F9_MAPPING,
+    DREAME_D9:  _DREAME_F9_MAPPING,
+    DREAME_Z10: _DREAME_Z10_MAPPING,
 }
 
 
@@ -182,7 +225,7 @@ def _get_cleaning_mode_enum_class(model):
     """Return cleaning mode enum class for model if found or None."""
     if model == DREAME_1C:
         return CleaningModeDreame1C
-    elif model in [DREAME_F9, DREAME_D9]:
+    elif model in [DREAME_F9, DREAME_D9, DREAME_Z10]:
         return CleaningModeDreameF9
 
 
@@ -360,6 +403,7 @@ class DreameVacuum(MiotDevice):
         DREAME_1C,
         DREAME_D9,
         DREAME_F9,
+        DREAME_Z10,        
     ]
     _mappings = MIOT_MAPPING
 
