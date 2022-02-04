@@ -2,11 +2,11 @@
 
 import logging
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import click
 
-from miio.click_common import command, format_output
+from miio.click_common import command, format_output, LiteralParamType
 from miio.exceptions import DeviceException
 from miio.miot_device import DeviceStatus as DeviceStatusContainer
 from miio.miot_device import MiotDevice, MiotMapping
@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 DREAME_1C  = "dreame.vacuum.mc1808"
 DREAME_F9  = "dreame.vacuum.p2008"
 DREAME_D9  = "dreame.vacuum.p2009"
-DREAME_Z10 = "dreame.vacuum.p2028"
+DREAME_Z10_PRO = "dreame.vacuum.p2028"
 
 
 _DREAME_1C_MAPPING: MiotMapping = {
@@ -45,9 +45,9 @@ _DREAME_1C_MAPPING: MiotMapping = {
     "life_sieve": {"siid": 19, "piid": 1},
     "life_brush_side": {"siid": 19, "piid": 2},
     "life_brush_main": {"siid": 19, "piid": 3},
-    "timer_enable": {"siid": 20, "piid": 1},
-    "start_time": {"siid": 20, "piid": 2},
-    "stop_time": {"siid": 20, "piid": 3},
+    "dnd_timer_enable": {"siid": 20, "piid": 1},
+    "dnd_start_time": {"siid": 20, "piid": 2},
+    "dnd_stop_time": {"siid": 20, "piid": 3},
     "deg": {"siid": 21, "piid": 1, "access": ["write"]},
     "speed": {"siid": 21, "piid": 2, "access": ["write"]},
     "map_view": {"siid": 23, "piid": 1},
@@ -83,15 +83,15 @@ _DREAME_F9_MAPPING: MiotMapping = {
     "operating_mode": {"siid": 4, "piid": 1},
     "cleaning_mode": {"siid": 4, "piid": 4},
     "delete_timer": {"siid": 18, "piid": 8},
-    "timer_enable": {"siid": 5, "piid": 1},
+    "dnd_timer_enable": {"siid": 5, "piid": 1},
+    "dnd_start_time": {"siid": 5, "piid": 2},
+    "dnd_stop_time": {"siid": 5, "piid": 3},
     "cleaning_time": {"siid": 4, "piid": 2},
     "cleaning_area": {"siid": 4, "piid": 3},
     "first_clean_time": {"siid": 12, "piid": 1},
     "total_clean_time": {"siid": 12, "piid": 2},
     "total_clean_times": {"siid": 12, "piid": 3},
     "total_clean_area": {"siid": 12, "piid": 4},
-    "start_time": {"siid": 5, "piid": 2},
-    "stop_time": {"siid": 5, "piid": 3},
     "map_view": {"siid": 6, "piid": 1},
     "frame_info": {"siid": 6, "piid": 2},
     "volume": {"siid": 7, "piid": 1},
@@ -111,7 +111,7 @@ _DREAME_F9_MAPPING: MiotMapping = {
 }
 
 
-_DREAME_Z10_MAPPING: MiotMapping = {
+_DREAME_Z10_PRO_MAPPING: MiotMapping = {
     # https://home.miot-spec.com/spec/dreame.vacuum.p2028
     "battery_level": {"siid": 3, "piid": 1},
     "charging_state": {"siid": 3, "piid": 2},
@@ -125,25 +125,31 @@ _DREAME_Z10_MAPPING: MiotMapping = {
     "brush_life_level2": {"siid": 10, "piid": 2},    
     "operating_mode": {"siid": 4, "piid": 1},
     "cleaning_mode": {"siid": 4, "piid": 4}, 
-    "timer_enable": {"siid": 5, "piid": 1},    
+    "dnd_timer_enable": {"siid": 5, "piid": 1},
+    "dnd_start_time": {"siid": 5, "piid": 2},
+    "dnd_stop_time": {"siid": 5, "piid": 3},          
     "cleaning_time": {"siid": 4, "piid": 2},
     "cleaning_area": {"siid": 4, "piid": 3},
     "first_clean_time": {"siid": 12, "piid": 1},
     "total_clean_time": {"siid": 12, "piid": 2},
     "total_clean_times": {"siid": 12, "piid": 3},
     "total_clean_area": {"siid": 12, "piid": 4},    
-    "start_time": {"siid": 5, "piid": 2},
-    "stop_time": {"siid": 5, "piid": 3},  
     "map_view": {"siid": 6, "piid": 1}, 
     "frame_info": {"siid": 6, "piid": 2},
     "volume": {"siid": 7, "piid": 1},
-    "voice_package": {"siid": 7, "piid": 2},        
+    "voice_package": {"siid": 7, "piid": 2}, 
+    "water_flow": {"siid": 4, "piid": 5},           
     "water_box_carriage_status": {"siid": 4, "piid": 6},
-    "timezone": {"siid": 8, "piid": 1},
+    "timezone": {"siid": 8, "piid": 1}, 
+    "timer_clean": {"siid": 8, "piid": 2},     
+    "emptybase_auto": {"siid": 15, "piid": 1},
+    "emptybase_times": {"siid": 15, "piid": 2},        
+    "emptybase_enable": {"siid": 15, "piid": 3},   
     "home": {"siid": 3, "aiid": 1},
     "locate": {"siid": 7, "aiid": 1},
     "start_clean": {"siid": 4, "aiid": 1},
     "stop_clean": {"siid": 4, "aiid": 2},
+    "start_clean_extend": {"siid": 4, "aiid": 1},
     "delete_timer": {"siid": 8, "aiid": 1},      
     "reset_mainbrush_life": {"siid": 9, "aiid": 1},
     "reset_filter_life": {"siid": 11, "aiid": 1},
@@ -155,7 +161,7 @@ MIOT_MAPPING: Dict[str, MiotMapping] = {
     DREAME_1C:  _DREAME_1C_MAPPING,
     DREAME_F9:  _DREAME_F9_MAPPING,
     DREAME_D9:  _DREAME_F9_MAPPING,
-    DREAME_Z10: _DREAME_Z10_MAPPING,
+    DREAME_Z10_PRO: _DREAME_Z10_PRO_MAPPING,
 }
 
 
@@ -185,7 +191,7 @@ class CleaningModeDreameF9(FormattableEnum):
     Turbo = 3
 
 
-class OperatingMode(FormattableEnum):
+class OperatingMode(FormattableEnum):    
     Paused = 1
     Cleaning = 2
     GoCharging = 3
@@ -193,14 +199,15 @@ class OperatingMode(FormattableEnum):
     ManualCleaning = 13
     Sleeping = 14
     ManualPaused = 17
-    ZonedCleaning = 19
-
+    RoomCleaning = 18
+    ZoneCleaning = 19
+           
 
 class FaultStatus(FormattableEnum):
     NoFaults = 0
 
 
-class DeviceStatus(FormattableEnum):
+class DeviceStatus(FormattableEnum):     
     Sweeping = 1
     Idle = 2
     Paused = 3
@@ -225,7 +232,7 @@ def _get_cleaning_mode_enum_class(model):
     """Return cleaning mode enum class for model if found or None."""
     if model == DREAME_1C:
         return CleaningModeDreame1C
-    elif model in [DREAME_F9, DREAME_D9, DREAME_Z10]:
+    elif model in [DREAME_F9, DREAME_D9, DREAME_Z10_PRO]:
         return CleaningModeDreameF9
 
 
@@ -299,16 +306,16 @@ class DreameVacuumStatus(DeviceStatusContainer):
             return None
 
     @property
-    def timer_enable(self) -> str:
-        return self.data["timer_enable"]
+    def dnd_timer_enable(self) -> str:
+        return self.data["dnd_timer_enable"]
 
     @property
-    def start_time(self) -> str:
-        return self.data["start_time"]
+    def dnd_start_time(self) -> str:
+        return self.data["dnd_start_time"]
 
     @property
-    def stop_time(self) -> str:
-        return self.data["stop_time"]
+    def dnd_stop_time(self) -> str:
+        return self.data["dnd_stop_time"]
 
     @property
     def map_view(self) -> str:
@@ -326,6 +333,31 @@ class DreameVacuumStatus(DeviceStatusContainer):
     def timezone(self) -> str:
         return self.data["timezone"]
 
+    @property
+    def timer_clean(self) -> str:
+        return self.data["timer_clean"]
+        
+    @property
+    def emptybase_auto(self) -> str:
+        if self.model != DREAME_Z10_PRO:
+            _LOGGER.error(f"Autoempty base not available in ({self.model})")
+            return None        
+        return self.data["emptybase_auto"]
+
+    @property
+    def emptybase_times(self) -> str:
+        if self.model != DREAME_Z10_PRO:
+            _LOGGER.error(f"Autoempty base not available in ({self.model})")
+            return None     
+        return self.data["emptybase_times"]
+
+    @property
+    def emptybase_enable(self) -> str:
+        if self.model != DREAME_Z10_PRO:
+            _LOGGER.error(f"Autoempty base not available in ({self.model})")
+            return None   
+        return self.data["emptybase_enable"]
+        
     @property
     def cleaning_time(self) -> str:
         return self.data["cleaning_time"]
@@ -403,7 +435,7 @@ class DreameVacuum(MiotDevice):
         DREAME_1C,
         DREAME_D9,
         DREAME_F9,
-        DREAME_Z10,        
+        DREAME_Z10_PRO,        
     ]
     _mappings = MIOT_MAPPING
 
@@ -425,11 +457,15 @@ class DreameVacuum(MiotDevice):
             "Map view: {result.map_view}\n"
             "Operating mode: {result.operating_mode}\n"
             "Side cleaning brush left time: {result.brush_left_time2}\n"
-            "Side cleaning brush life level: {result.brush_life_level2}\n"
-            "Time zone: {result.timezone}\n"
-            "Timer enabled: {result.timer_enable}\n"
-            "Timer start time: {result.start_time}\n"
-            "Timer stop time: {result.stop_time}\n"
+            "Side cleaning brush life level: {result.brush_life_level2}\n"            
+            "Time zone: {result.timezone}\n"   
+            "Timer cleaning: {result.timer_clean}\n"                        
+            "Empty Base Auto: {result.emptybase_auto}\n"
+            "Empty Base Clean Times: {result.emptybase_times}\n"
+            "Empty Base Enable: {result.emptybase_enable}\n"                                                
+            "DND Timer enabled: {result.dnd_timer_enable}\n"
+            "DND Timer start time: {result.dnd_start_time}\n"
+            "DND Timer stop time: {result.dnd_stop_time}\n"
             "Voice package: {result.voice_package}\n"
             "Volume: {result.volume}\n"
             "Water flow: {result.water_flow}\n"
@@ -571,6 +607,75 @@ class DreameVacuum(MiotDevice):
             return {}
         return _enum_as_dict(WaterFlow)
 
+    @command()
+    def get_rooms_ids_from_timers(self):
+        """Get rooms ids using the timers defined via the Mi Home App."""
+        dreame_vacuum_status = self.status()
+        timerstxt = dreame_vacuum_status.timer_clean
+        if not timerstxt or timerstxt == "-1":
+            _LOGGER.warning("Unknown timers value received")
+            return
+        timers=timerstxt.split(";")    
+        for timer in timers:
+          prop = timer.split("-")
+          timer_id=prop[0]
+          timer_en=prop[1]
+          timer_time=prop[2]
+          timer_days=prop[3]
+          timer_rep=prop[4]
+          xxx=prop[5]
+          timer_power=prop[6]
+          timer_water=prop[7]                                                                      
+          timer_rooms=prop[8]
+          print("Timer: "+timer_id+" Time: "+timer_time+" Rooms ids: "+timer_rooms)
+          
+                   
+    @command()
+    def start_clean_extend(self, params) -> None:
+        """Start cleaning (extended with params)."""
+        #print("*******TEST******* CLEAN CALL DISABLED ********")
+        print(params)
+        return self.call_action("start_clean_extend", params)
+ 
+    @command(click.argument("rooms_par", type=LiteralParamType(), required=True))
+    def start_clean_rooms(self, rooms_par: List) -> None:
+        """Start room-id cleaning. [[i1,r1,p1,w1],[i2,r2,p2,w2],...]"""
+        
+        if self.model != DREAME_Z10_PRO:
+          raise DeviceException("Room clean by IDs not available in %s", self.model)  
+        try:
+         roomsToclean=len(rooms_par)  
+         if(roomsToclean<1):
+          raise DeviceException("One or more rooms must be specified: [[i,r,p,w]...] ")  
+         for i in range(roomsToclean):
+          if(len(rooms_par[i])!=4):
+            raise DeviceException("For each room specify: [roomid,repeats,powerlevel,waterlevel]")           
+        except:
+         raise DeviceException("Use room clean param in this way: [[roomid,repeats,powerlevel,waterlevel],...]") 
+          
+        cleantask = []
+        for room in rooms_par:
+          room_id = room[0]
+          repeats = room[1]
+          power_lev = room[2]
+          water_lev = room[3]
+          cleantask.append([room_id,repeats,power_lev,water_lev,rooms_par.index(room) + 1,])
+        payload = [
+            {"piid": 1,     #work mode
+             "value": 18},  #18=roomclean, 19=zoneclean
+            {
+                "piid": 10, #clean extend data
+                "value": '{"selects": ' + str(cleantask).replace(" ", "") + "}",
+            },
+        ]
+        self.start_clean_extend(payload)
+
+    @command(click.argument("zones_par", type=LiteralParamType(), required=True))
+    def start_clean_zones(self, zones_par: List) -> None:
+        raise NotImplementedError("Not yet implemented. Work in progress")             
+#       self.start_clean_extend(payload)
+        
+        
     @command(
         click.argument("distance", default=30, type=int),
     )
