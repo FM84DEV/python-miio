@@ -608,14 +608,16 @@ class DreameVacuum(MiotDevice):
         return _enum_as_dict(WaterFlow)
 
     @command()
-    def get_rooms_ids_from_timers(self):
+    def get_rooms_ids_from_timers(self) -> str:
         """Get rooms ids using the timers defined via the Mi Home App."""
         dreame_vacuum_status = self.status()
         timerstxt = dreame_vacuum_status.timer_clean
         if not timerstxt or timerstxt == "-1":
             _LOGGER.warning("Unknown timers value received")
             return
-        timers=timerstxt.split(";")    
+        timers=timerstxt.split(";")
+
+        found=False    
         for timer in timers:
           prop = timer.split("-")
           timer_id=prop[0]
@@ -626,9 +628,13 @@ class DreameVacuum(MiotDevice):
           xxx=prop[5]
           timer_power=prop[6]
           timer_water=prop[7]                                                                      
-          timer_rooms=prop[8]
-          print("Timer: "+timer_id+" Time: "+timer_time+" Rooms ids: "+timer_rooms)
-          
+          timer_rooms=prop[8]          
+          #print("Timer: "+timer_id+" Time: "+timer_time+" Rooms ids: "+timer_rooms)
+          if(str(timer_en)=="0" and str(timer_time)=="12:00"):
+            return str(timer_rooms)
+            found=True
+        if(found==False):
+          return "Timer NOT ENABLE with time 12:00 not found. Define it to get the rooms ids."
                    
     @command()
     def start_clean_extend(self, params) -> None:
@@ -662,7 +668,7 @@ class DreameVacuum(MiotDevice):
           cleantask.append([room_id,repeats,power_lev,water_lev,rooms_par.index(room) + 1,])
         payload = [
             {"piid": 1,     #work mode
-             "value": 18},  #18=roomclean, 19=zoneclean
+             "value": 18},  #roomclean
             {
                 "piid": 10, #clean extend data
                 "value": '{"selects": ' + str(cleantask).replace(" ", "") + "}",
@@ -672,8 +678,37 @@ class DreameVacuum(MiotDevice):
 
     @command(click.argument("zones_par", type=LiteralParamType(), required=True))
     def start_clean_zones(self, zones_par: List) -> None:
-        raise NotImplementedError("Not yet implemented. Work in progress")             
-#       self.start_clean_extend(payload)
+        """Start zone area cleaning. [[x1,y1,x2,y2,r1],[......],...]"""    
+
+        if self.model != DREAME_Z10_PRO:
+          raise DeviceException("Zone area clean not available in %s", self.model)   
+        try:
+         zonesToclean=len(zones_par)  
+         if(zonesToclean<1):
+          raise DeviceException("One or more zones must be specified: [[x1,y1,x2,y2,r1]...] ")  
+         for i in range(zonesToclean):
+          if(len(zones_par[i])!=5):
+            raise DeviceException("For each zone area specify: [bootom left x,bootom left y,top right x,top right y,repeats]")           
+        except:
+         raise DeviceException("Use zone area clean param in this way: [[bootom left x,bootom left y,top right x,top right y,repeats],...]") 
+          
+        cleantask = []  
+        for zone in zones_par:
+          x1 = zone[0]
+          y1 = zone[1]
+          x2 = zone[2]
+          y2 = zone[3]
+          rp = zone[4]          
+          cleantask.append([x1,y1,x2,y2,rp])                       
+        payload = [
+            {"piid": 1,     #work mode
+             "value": 19},  #zoneclean
+            {
+                "piid": 10, #clean extend data
+                "value": '{"areas": ' + str(cleantask).replace(" ", "") + "}",
+            },
+        ]           
+        self.start_clean_extend(payload)
         
         
     @command(
